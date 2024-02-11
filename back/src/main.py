@@ -1,26 +1,32 @@
-from datetime import datetime, timedelta
+import os
+from datetime import datetime, timedelta, UTC
 from typing import Annotated
 
 import bcrypt
 import uvicorn
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
+from pydantic import constr
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from models import User, engine, Token, Category, Task, TaskIn, TaskInModify
 
-SECRET_KEY = "fa4b5297f69d0096b2a11eddc84cae023fddceb919b8a828c9c9639529edc216"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = timedelta(hours=1)
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "fa4b5297f69d0096b2a11eddc84cae023fddceb919b8a828c9c9639529edc216"
+)
+ALGORITHM = os.environ.get("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = timedelta(days=30)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/usuarios/iniciar-sesion")
 app = FastAPI()
 
 
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
-    credentials_exception = HTTPException(status_code=401, detail="Usuario o contraseña incorrectas")
+    credentials_exception = HTTPException(
+        status_code=401, detail="Usuario o contraseña incorrectas"
+    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -39,20 +45,29 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + ACCESS_TOKEN_EXPIRE_MINUTES
+    expire = datetime.now(UTC) + ACCESS_TOKEN_EXPIRE_MINUTES
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
 @app.post("/usuarios")
-def create_user(name: str, password: str):
-    """ Crea un nuevo usuario para la aplicación"""
+def create_user(
+    username: constr(min_length=5, to_lower=True) = Body(),
+    password: constr(min_length=5) = Body(),
+):
+    """Crea un nuevo usuario para la aplicación"""
     key = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-    user = User(username=name, password=key.decode())
-    with Session(engine) as session:
-        session.add(user)
-        session.commit()
+    user = User(username=username, password=key.decode())
+    try:
+        with Session(engine) as session:
+            session.add(user)
+            session.commit()
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_406_NOT_ACCEPTABLE,
+            detail="El nombre de usuario ya se encuentra en uso",
+        )
     return "ok"
 
 
@@ -62,8 +77,10 @@ def start_session(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) ->
         statement = select(User).where(User.username == form_data.username)
         user = session.exec(statement).one_or_none()
 
-    if user is None or not bcrypt.checkpw(form_data.password.encode(), user.password.encode()):
-        raise HTTPException(status_code=401, detail="Usuario erróneo")
+    if user is None or not bcrypt.checkpw(
+        form_data.password.encode(), user.password.encode()
+    ):
+        raise HTTPException(status_code=401, detail="Usuario o contraseña erróneo")
 
     access_token = create_access_token({"sub": user.username})
 
@@ -72,7 +89,7 @@ def start_session(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) ->
 
 @app.post("/categorias")
 def create_category(name: str, description: str = None) -> Category:
-    """ Crea una categoría"""
+    """Crea una categoría"""
     category = Category(name=name, description=description)
     try:
         with Session(engine) as session:
@@ -81,12 +98,14 @@ def create_category(name: str, description: str = None) -> Category:
             session.refresh(category)
             return category
     except IntegrityError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La categoría ya existe")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="La categoría ya existe"
+        )
 
 
 @app.delete("/categorias/{id}")
 def delete_category(id: int):
-    """ Elimina una categoría"""
+    """Elimina una categoría"""
     with Session(engine) as session:
         category = session.get(Category, id)
         session.delete(category)
@@ -97,16 +116,16 @@ def delete_category(id: int):
 
 @app.get("/categorias", response_model=list[Category])
 def get_category():
-    """ Obtiene una lista de las categorías """
+    """Obtiene una lista de las categorías"""
     with Session(engine) as session:
         return session.exec(select(Category)).all()
 
 
 @app.post("/tareas")
-def create_task(task: TaskIn = Depends()) -> Task:
-    """ Crea una tarea"""
+def create_task(task: TaskIn = Body(), user: User = Depends(get_current_user)) -> Task:
+    """Crea una tarea"""
     with Session(engine) as session:
-        task = Task(**task.dict())
+        task = Task(**task.dict(), user_id=user.id)
         session.add(task)
         session.commit()
         session.refresh(task)
@@ -114,13 +133,14 @@ def create_task(task: TaskIn = Depends()) -> Task:
 
 
 @app.put("/tareas/{id}")
-def update_task(id: int, task_update: TaskInModify = Depends()):
+def update_task(
+    id: int, task_update: TaskInModify = Body(), user: User = Depends(get_current_user)
+):
     """Actualiza una tarea"""
     with Session(engine) as session:
         task = session.get(Task, id)
         for k, v in task_update.dict(exclude_unset=True).items():
             setattr(task, k, v)
-
         session.add(task)
         session.commit()
     return "Tarea actualizada"
@@ -137,13 +157,18 @@ def delete_task(id: int):
 
 
 @app.get("/tareas", response_model=list[Task])
-def get_tasks():
+def get_tasks(user: User = Depends(get_current_user)):
     """Obtiene las tareas del usuario activo"""
     with Session(engine) as session:
-        return session.exec(select(Task)).all()
+        return session.exec(select(Task).where(Task.user_id == user.id)).all()
 
 
 # start_session("yachay", "password")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, )
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+    )
