@@ -20,7 +20,10 @@ ALGORITHM = os.environ.get("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = timedelta(days=30)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/usuarios/iniciar-sesion")
-app = FastAPI()
+app = FastAPI(
+    title="Todo List",
+    description="Esta API permite gestionar la aplicación de TODO, creando usuario, categorías y tareas",
+)
 
 
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
@@ -88,23 +91,22 @@ def start_session(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) ->
 
 
 @app.post("/categorias")
-def create_category(name: str, description: str = None) -> Category:
+def create_category(name: str = Body(), description: str | None = Body()) -> str:
     """Crea una categoría"""
     category = Category(name=name, description=description)
     try:
         with Session(engine) as session:
             session.add(category)
             session.commit()
-            session.refresh(category)
-            return category
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="La categoría ya existe"
         )
+    return "Categoría creada"
 
 
 @app.delete("/categorias/{id}")
-def delete_category(id: int):
+def delete_category(id: int) -> str:
     """Elimina una categoría"""
     with Session(engine) as session:
         category = session.get(Category, id)
@@ -135,7 +137,7 @@ def create_task(task: TaskIn = Body(), user: User = Depends(get_current_user)) -
 @app.put("/tareas/{id}")
 def update_task(
     id: int, task_update: TaskInModify = Body(), user: User = Depends(get_current_user)
-):
+) -> str:
     """Actualiza una tarea"""
     with Session(engine) as session:
         task = session.get(Task, id)
@@ -147,7 +149,7 @@ def update_task(
 
 
 @app.delete("/tareas/{id}")
-def delete_task(id: int):
+def delete_task(id: int) -> str:
     """Elimina una tarea"""
     with Session(engine) as session:
         task = session.get(Task, id)
@@ -163,12 +165,16 @@ def get_tasks(user: User = Depends(get_current_user)):
         return session.exec(select(Task).where(Task.user_id == user.id)).all()
 
 
-# start_session("yachay", "password")
+with Session(engine) as session:
+    if not session.exec(select(Category)).all():
+        session.add(Category(id=1, name="Normal"))
+        session.add(Category(id=2, name="Prioritaria"))
+        session.commit()
 
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8080,
         reload=True,
     )

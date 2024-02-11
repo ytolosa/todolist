@@ -3,5 +3,6 @@ bcrypt~=4.1.2
 fastapi~=0.109.0
 pydantic~=1.10.14
 uvicorn
+psycopg2-binary
 python-multipart
 sqlmodel~=0.0.14

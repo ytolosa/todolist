@@ -1,4 +1,4 @@
-FROM python:3.12
+FROM python:3.12-alpine
 LABEL authors="Yachay J. Tolosa"
 
 COPY ./requirements.txt /code/requirements.txt

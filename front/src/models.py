@@ -22,4 +22,4 @@ class TaskModel(BaseModel):
 class Category(BaseModel):
     id: int
     name: str
-    description: str = None
+    description: str | None = None

@@ -12,6 +12,8 @@ def main(page: ft.Page):
                 ft.View(
                     "/register",
                     [Register()],
+                    vertical_alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 )
             )
             return
@@ -48,7 +50,8 @@ def main(page: ft.Page):
                                         "Cerrar sesión",
                                         on_click=lambda _: page.go("/login"),
                                     ),
-                                ]
+                                ],
+                                alignment=ft.MainAxisAlignment.END,
                             )
                         ),
                         TaskList(),

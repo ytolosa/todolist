@@ -10,25 +10,41 @@ class Register(ft.UserControl):
         self.username_input = ft.TextField(
             label="Nombre de usuario",
             prefix_icon=ft.icons.PERSON_OUTLINE,
-            on_focus=self.reset_color,
-            border=None,
+            border=ft.InputBorder.UNDERLINE,
         )
+
         self.password_input = ft.TextField(
             password=True,
             label="Contraseña",
             prefix_icon=ft.icons.LOCK_OUTLINE,
-            on_focus=self.reset_color,
+            on_submit=lambda x: self.page.go("/register"),
+            border=ft.InputBorder.UNDERLINE,
+            can_reveal_password=True,
         )
-        return ft.Column(
-            [
-                self.username_input,
-                self.password_input,
-                ft.FilledButton("Registrarse", on_click=self.register),
-                ft.FilledButton(
-                    text="Volver",
-                    on_click=lambda x: self.page.go("/login"),
-                ),
-            ]
+
+        return ft.Container(
+            width=400,
+            bgcolor=ft.colors.PRIMARY_CONTAINER,
+            padding=30,
+            border_radius=10,
+            content=ft.Column(
+                [
+                    ft.Text("Crear nuevo usuario:"),
+                    self.username_input,
+                    self.password_input,
+                    ft.Row(
+                        [
+                            ft.ElevatedButton("Registrarse", on_click=self.register),
+                            ft.FilledButton(
+                                icon=ft.icons.ARROW_LEFT,
+                                text="Volver",
+                                on_click=lambda x: self.page.go("/login"),
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                ]
+            ),
         )
 
     def reset_color(self, event: ControlEvent):
@@ -84,7 +100,7 @@ class Login(ft.UserControl):
             password=True,
             label="Contraseña",
             prefix_icon=ft.icons.LOCK_OUTLINE,
-            on_submit=lambda x: self.page.go("/register"),
+            on_submit=self.login,
             border=ft.InputBorder.UNDERLINE,
             can_reveal_password=True,
         )
@@ -101,8 +117,11 @@ class Login(ft.UserControl):
                     self.password_input,
                     ft.Row(
                         [
-                            ft.FilledButton(text="Entrar", on_click=self.login),
-                            ft.FilledButton(
+                            ft.ElevatedButton(
+                                text="Entrar",
+                                on_click=self.login,
+                            ),
+                            ft.TextButton(
                                 text="Registrarse",
                                 on_click=lambda x: self.page.go("/register"),
                             ),

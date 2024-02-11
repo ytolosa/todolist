@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  database:
+    image: 'postgres:latest'
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: todolist_user
+      POSTGRES_PASSWORD: todolist_pass
+      POSTGRES_DB: todolist
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  back:
+    image: "yachaytolosa/cloud:back"
+    build: ./back
+    ports:
+      - "8080:8080"
+    depends_on:
+      - database
+    environment:
+      DATABASE_CONNECTION: "postgresql://todolist_user:todolist_pass@database:5432/todolist"
+    restart: unless-stopped
+
+  front:
+    image: "yachaytolosa/cloud:front"
+    build: ./front
+    ports:
+      - "80:8080"
+    depends_on:
+      - back
+    environment:
+      BACK_URL: "http://back:8080"
+    restart: unless-stopped

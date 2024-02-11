@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, FutureDate, constr
 from sqlmodel import Field, SQLModel, create_engine, Relationship
+from conf import DATABASE_CONNECTION
 
 
 class State(IntEnum):
@@ -55,7 +56,7 @@ class User(SQLModel, table=True):
     tasks: list[Task] = Relationship(back_populates="user")
 
 
-engine = create_engine("sqlite:///database.db", echo=True)
+engine = create_engine(DATABASE_CONNECTION, echo=True)
 
 SQLModel.metadata.create_all(engine)
 

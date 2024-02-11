@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 import flet as ft
 import httpx
@@ -29,11 +29,43 @@ class Task(ft.UserControl):
     def on_change(self, event: ft.ControlEvent):
         setattr(self.task, event.control.data, event.control.value)
         token = self.page.client_storage.get("token")["access_token"]
+
+        if type(event.control.value) is datetime:
+            value = event.control.value.date().isoformat()
+        else:
+            value = event.control.value
+        print({event.control.data: value})
         r = httpx.put(
             f"{BACK_URL}/tareas/{self.task.id}",
-            json={event.control.data: str(event.control.value)},
+            json={event.control.data: value},
             headers={"Authorization": "Bearer " + token},
         )
+
+        if event.control.data == "state":
+            self.change_status()
+
+    def change_status(self):
+        match int(self.task.state):
+            case 1:
+                self.icon.icon_color = ft.colors.GREY
+                self.icon.icon = ft.icons.BEDTIME_OUTLINED
+            case 2:
+                self.icon.icon_color = ft.colors.ORANGE
+                self.icon.icon = ft.icons.RUN_CIRCLE_OUTLINED
+            case 3:
+                self.icon.icon_color = ft.colors.GREEN
+                self.icon.icon = ft.icons.CHECK
+        self.state.value = int(self.task.state)
+        if self.page is not None:
+            self.icon.update()
+            self.state.update()
+
+    def rotate_status(self, event=None):
+        state = int(self.task.state) + 1
+        if state > 3:
+            state = 1
+        self.task.state = state
+        self.change_status()
 
     def delete(self, event: ft.ControlEvent):
         token = self.page.client_storage.get("token")["access_token"]
@@ -57,6 +89,7 @@ class Task(ft.UserControl):
             dense=True,
             content_padding=5,
             capitalization=ft.TextCapitalization.SENTENCES,
+            expand=True,
         )
 
         self.category = ft.Dropdown(
@@ -98,20 +131,24 @@ class Task(ft.UserControl):
             text_kwargs=dict(size=13, color=ft.colors.SECONDARY),
         )
 
+        self.icon = ft.IconButton(on_click=self.rotate_status)
+        self.change_status()
+
         result.controls = [
             ft.Container(
                 ft.Column(
                     [
-                        self.text,
+                        ft.Row([self.text, self.icon]),
                         ft.Row(
                             [
-                                self.category,
                                 self.state,
+                                self.category,
                                 self.end_date,
                                 ft.IconButton(ft.icons.DELETE, on_click=self.delete),
                             ]
                         ),
-                    ]
+                    ],
+                    spacing=0
                 ),
                 bgcolor=ft.colors.PRIMARY_CONTAINER,
                 border_radius=5,
@@ -238,7 +275,12 @@ class TaskList(ft.UserControl):
             ft.ElevatedButton("Agregar", on_click=self.task_creator.open)
         )
         self.result.controls.append(self.task_list)
-        return self.result
+        return ft.Container(
+            self.result,
+            padding=10,
+            margin=50,
+            blur=10,
+        )
 
     def did_mount(self):
         token = self.page.client_storage.get("token")["access_token"]
