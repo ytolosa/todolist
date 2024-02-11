@@ -108,11 +108,16 @@ def create_category(name: str = Body(), description: str | None = Body()) -> str
 @app.delete("/categorias/{id}")
 def delete_category(id: int) -> str:
     """Elimina una categoría"""
-    with Session(engine) as session:
-        category = session.get(Category, id)
-        session.delete(category)
-        session.commit()
-
+    try:
+        with Session(engine) as session:
+            category = session.get(Category, id)
+            session.delete(category)
+            session.commit()
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Existen tareas asociadas a esta categoría",
+        )
     return "Categoría eliminada"
 
 

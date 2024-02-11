@@ -34,12 +34,14 @@ class Task(ft.UserControl):
             value = event.control.value.date().isoformat()
         else:
             value = event.control.value
-        print({event.control.data: value})
         r = httpx.put(
             f"{BACK_URL}/tareas/{self.task.id}",
             json={event.control.data: value},
             headers={"Authorization": "Bearer " + token},
         )
+
+        if r.status_code == 401:
+            self.page.go("/login")
 
         if event.control.data == "state":
             self.change_status()
@@ -73,6 +75,9 @@ class Task(ft.UserControl):
             f"{BACK_URL}/tareas/{self.task.id}",
             headers={"Authorization": "Bearer " + token},
         )
+
+        if r.status_code == 401:
+            self.page.go("/login")
 
         if r.status_code != 200:
             raise RuntimeError()
@@ -201,6 +206,8 @@ class TaskCreator(ft.UserControl):
                 + self.page.client_storage.get("token")["access_token"]
             },
         )
+        if r.status_code == 401:
+            self.page.go("/login")
 
         if r.status_code != 200:
             raise RuntimeError("Error")
@@ -288,6 +295,9 @@ class TaskList(ft.UserControl):
             f"{BACK_URL}/tareas",
             headers={"Authorization": "Bearer " + token},
         )
+
+        if r.status_code == 401:
+            self.page.go("/login")
 
         tasks = r.json()
 
