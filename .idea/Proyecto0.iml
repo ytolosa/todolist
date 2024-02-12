@@ -6,7 +6,7 @@
       <excludeFolder url="file://$MODULE_DIR$/front/.venv-front" />
       <excludeFolder url="file://$MODULE_DIR$/back/.venv-back" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.12 (Proyecto0)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.12 (Front)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

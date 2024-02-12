@@ -19,7 +19,7 @@ class TaskModel(BaseModel):
     user_id: int
 
 
-class Category(BaseModel):
+class CategoryModel(BaseModel):
     id: int
     name: str
     description: str | None = None

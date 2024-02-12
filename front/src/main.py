@@ -1,6 +1,7 @@
 import flet as ft
 from flet_core.types import AppView
 
+from categories import CategoryList
 from login import Login, Register
 from tasks import TaskList
 
@@ -36,6 +37,35 @@ def main(page: ft.Page):
             )
             return
 
+        if page.route == "/categories":
+            page.views.clear()
+            page.views.append(
+                ft.View(
+                    "/store",
+                    [
+                        ft.AppBar(
+                            title=ft.Row(
+                                [
+                                    ft.IconButton(
+                                        ft.icons.ARROW_LEFT,
+                                        on_click=lambda _: page.go("/tasks"),
+                                    ),
+                                    ft.Text("Usuario: "),
+                                    ft.Text(
+                                        page.client_storage.get("user"), expand=True
+                                    ),
+                                    ft.FilledButton(
+                                        "Cerrar sesión",
+                                        on_click=lambda _: page.go("/login"),
+                                    ),
+                                ],
+                                alignment=ft.MainAxisAlignment.END,
+                            )
+                        ),
+                        CategoryList(),
+                    ],
+                )
+            )
         if page.route == "/tasks":
             page.views.clear()
             page.views.append(
@@ -45,7 +75,14 @@ def main(page: ft.Page):
                         ft.AppBar(
                             title=ft.Row(
                                 [
-                                    ft.Text(page.client_storage.get("user")),
+                                    ft.Text("Usuario: "),
+                                    ft.Text(
+                                        page.client_storage.get("user"), expand=True
+                                    ),
+                                    ft.TextButton(
+                                        "Administrar categorías",
+                                        on_click=lambda _: page.go("/categories"),
+                                    ),
                                     ft.FilledButton(
                                         "Cerrar sesión",
                                         on_click=lambda _: page.go("/login"),

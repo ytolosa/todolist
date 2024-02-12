@@ -5,21 +5,14 @@ import httpx
 
 from components import DataPicker
 from conf import BACK_URL
-from models import TaskModel, Category
+from models import TaskModel, CategoryModel
+from categories import get_categories
 
 STATUS = {"Sin iniciar": 1, "Iniciada": 2, "Finalizada": 3}
 
 
-def get_categories(token) -> list[Category]:
-    r = httpx.get(
-        BACK_URL + "/categorias",
-        headers={"Authorization": "Bearer " + token},
-    )
-    return [Category.parse_obj(c) for c in r.json()]
-
-
 class Task(ft.UserControl):
-    categories: list[Category] = []
+    categories: list[CategoryModel] = []
 
     def __init__(self, task: TaskModel, on_remove=None):
         super().__init__()

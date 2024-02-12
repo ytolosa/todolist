@@ -91,18 +91,20 @@ def start_session(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) ->
 
 
 @app.post("/categorias")
-def create_category(name: str = Body(), description: str | None = Body()) -> str:
+def create_category(name: str = Body(), description: str | None = Body()) -> Category:
     """Crea una categoría"""
     category = Category(name=name, description=description)
     try:
         with Session(engine) as session:
             session.add(category)
             session.commit()
+            session.refresh(category)
+
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="La categoría ya existe"
         )
-    return "Categoría creada"
+    return category
 
 
 @app.delete("/categorias/{id}")
